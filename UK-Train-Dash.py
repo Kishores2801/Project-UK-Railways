@@ -1,3 +1,5 @@
+# Import 
+import os
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
@@ -7,205 +9,227 @@ import folium
 
 
 # Load the dataset
-data = pd.read_csv("https://raw.githubusercontent.com/Kishores2801/Uk-Train-Dash-app/main/Data/Uk-Train%20Data.csv")
+data = pd.read_csv("https://raw.githubusercontent.com/Kishores2801/Project-UK-Railways/main/Data/Uk-Train%20Data.csv")
 weekday_order = ["All", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
 
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
 app.config.suppress_callback_exceptions = True
-server = app.server
-# Define the layout for the main app
+
+
+
 app.layout = html.Div(className='main-container', children=[
-    html.Div(
+    dcc.Location(id='url', refresh=False),
+    html.Nav(className='nav-bar', children=[
+        html.H1("UK Train Traveling Web Dashboard", style={"text-align": "center","font-size": "26px"}),
+        html.Ul([
+            html.Li(dcc.Link('Home', href='/'), style={"font-size": "18px", "margin-bottom":"18px"}),
+            html.Li(dcc.Link('Prediction', href='/Prediction'), style={"font-size": "18px", "margin-bottom":"18px"}),]),
+            
+        
+    ], style={"background-color": "#990011","font-family": "Roboto, sans-serif", "color": "white",
+              "text-align": "center", "margin-bottom": "10px", "width": "97%", "height":"80%"}),
+    html.Div(id='page-content', style={'flex': '1'})
+
+])
+
+
+home_layout = html.Div(
     className="home",
     children=[
-        html.Div(className="nav-bar", children=[html.H1("UK Train Traveling Web Dashboard")]),
-        html.P("This interactive web dashboard is designed to explore traveler behavior and operational performance in UK Railways."),
+        html.P(
+            "This interactive web dashboard is designed to explore traveler behavior and operational performance in UK Railways.",
+            style={"font-family": "Roboto, sans-serif", "font-size": "20px", "margin-bottom": "20px"}
+        ),
         html.Br(),
-        # Building the Dropdown Divs
-        html.Div(className="full-dropdowns", children=[
-            html.Div(className="departure-station", children=[
-                html.H3("Select the Departure Station: "),
-                dcc.Dropdown(
-                    id="dept-dropdown",
-                    options=[{'label': station, 'value': station} for station in data["Departure Station"].unique()],
-                    value=data["Departure Station"].unique()[0]  # Set a default value
+        html.Div(
+            className="dropdowns",
+            style={"display": "flex", "justify-content": "space-between", "width": "100%", "margin-bottom": "20px"},
+            children=[
+                html.Div(
+                    className="dropdown",
+                    style={"width": "33%", "flex": 1, "margin-right": "20px"},
+                    children=[
+                        html.H3(
+                            "Select the Departure Station:",
+                            style={"font-family": "Roboto, sans-serif", "font-size": "18px", "text-align": "left", "margin": "0 0 5px 0"}
+                        ),
+                        dcc.Dropdown(
+                            id="dept-dropdown",
+                            style={"width": "100%"},
+                            options=[{'label': station, 'value': station} for station in data["Departure Station"].unique()],
+                            value=data["Departure Station"].unique()[0]  # Set a default value
+                        ),
+                    ]
                 ),
-            ]),
-            html.Div(className="arrival-station", children=[
-                html.H3("Select the Arrival Station: "),
-                dcc.Dropdown(id="arr-dropdown", options=[], value=None),
-            ]),
-            html.Div(className="weekday", children=[
-                html.H3("Select the day: "),
-                dcc.Dropdown(id="week-dropdown",
-                             options=[{'label': day, 'value': day} for day in weekday_order],
-                             value="All")
-            ]),
-            
-            html.Br(),
-            html.Br(),
-        ]),
-        html.Div(className="output-container-1", children=[
-            html.Div(className="Map-section", children=[
-                html.Div(className="Map", id='map-id', children=[]),
-                html.Div(className="trip-info", id='trip-id', children=[]),
-            ]),
-            html.P(id="text-id-1", className="text-class-1", children=""),
-        ]),
-        html.Div(className="output-container-2", children=[
-            html.Div(className="dash-graph", children=[
-                dcc.Graph(id="line-chart-1"),
-            ]),
-            
-            html.Div(className="dash-graph", children=[
-                dcc.Graph(id="line-chart-2"),
-            ]),
-            
-        ]),
-        html.P(className="text-class-1", children="These charts display the cumulative sum of Actual Price, Discounted Price, and Paid Price over time. The Actual Price of Tickets was calculated after reverting discounts applied for railcards and Advance or Off-Peak Ticket Types. Discounts were calculated by subtracting the Actual Price from the Final Price."),
+                html.Div(
+                    style={"width": "33%", "flex": 1, "margin-right": "20px"},
+                    children=[
+                        html.H3(
+                            "Select the Arrival Station:",
+                            style={"font-family": "Roboto, sans-serif", "font-size": "18px", "text-align": "left", "margin": "0 0 5px 0"}
+                        ),
+                        dcc.Dropdown(
+                            id="arr-dropdown",
+                            style={"width": "100%"},
+                            options=[]
+                        ),
+                    ]
+                ),
+                html.Div(
+                    style={"width": "33%", "flex": 1, "margin-right": "20px"},
+                    children=[
+                        html.H3(
+                            "Select the day:",
+                            style={"font-family": "Roboto, sans-serif", "font-size": "18px", "text-align": "left", "margin": "0 0 5px 0"}
+                        ),
+                        dcc.Dropdown(
+                            id="week-dropdown",
+                            style={"width": "100%"},
+                            options=[{'label': day, 'value': day} for day in weekday_order],
+                            value="All"
+                        ),
+                    ]
+                ),
+            ]
+        ),
+        html.Br(),
+        
+        html.Div(
+            className="output-container-1",
+            style={"padding": "20px", "width": "95%", "height": "600px", "overflow": "hidden", "margin-top": "20px"},
+            children=[
+                html.Div(
+                    className="Map-section",
+                    style={"display": "flex", "justify-content": "space-between", "height": "500px", "overflow": "hidden"},
+                    children=[
+                        html.Div(
+                            className="Map",
+                            id='map-id',
+                            children=[],
+                            style={"height": "100%", "width": "65%", "margin": "0 10px 0 30px"}
+                        ),
+                        html.Div(
+                            className="trip-info",
+                            id='trip-id',
+                            children=[],
+                            style={"width": "40%", "padding": "5px", "display": "flex", "flex-direction": "column", "height": "100%", "line-height":"8px"}
+                        ),
+                    ]
+                ),
+                html.P(
+                    id="text-id-1",
+                    className="text-class-1",
+                    children="",
+                    style={"font-size": "16px", "padding": "15px", "margin-left": "30px"}
+                ),
+            ]
+        ),
+        html.Br(),
+        html.Br(),
+        html.Div(
+            className="output-container-1",
+            style={"width": "90%", "height": "550px", "margin-top": "20px", "display": "flex", "align-items": "stretch", "justify-content": "space-between", "margin-left": "20px", "padding": "10px"},
+            children=[
+                html.Div(
+                    className="dash-graph",
+                    style={"flex": 1, "text-align": "center", "height": "100%", "margin-right": "4%", "padding-left": "10px"},
+                    children=[
+                        dcc.Graph(id="line-chart-1"),
+                    ]),
+                    html.Div(className="dash-graph", 
+                             style={"flex": 1, "text-align": "center", "height": "100%", "margin-right": "4%", "padding-left": "10px"}, children=[
+                            dcc.Graph(id="line-chart-2"),
+                    ]),
+                
+            ]
+        ),
 
-
-        html.Div(className="output-container-2", children=[
-            html.Div(className="dash-graph", children=[
+        html.Div(className="output-container-2", 
+                 style={"padding": "20px", "width": "90%", "height": "550px", "overflow": "hidden", "margin-top": "10px"}, children=[
+            html.Div(className="dash-graph",
+                     style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"},  children=[
                 dcc.Graph(id="bar-chart-1"),
             ]),
         ]),
-        html.P(className="text-class-2", children="This chart depicts the busiest hours at each departure station, showcasing the distribution of departure times. It reveals a recurring pattern commonly seen in railway stations, with notable spikes in passenger traffic occurring at approximately 8:00 AM and 8:00 PM. This pattern suggests a consistent 12-hour cycle of activity throughout the day."),
 
-        html.Div(className="output-container-3", children=[
-            html.Div(className="dash-graph", children=[
+
+        html.P(
+            className="text-class-2",
+            style={'font-size': '18px', "padding": "10px", "margin-left": "20px"},
+            children=(
+                "This chart depicts the busiest hours at each departure station, showcasing the distribution of departure times. "
+                "It reveals a recurring pattern commonly seen in railway stations, with notable spikes in passenger traffic occurring "
+                "at approximately 8:00 AM and 8:00 PM. This pattern suggests a consistent 12-hour cycle of activity throughout the day."
+            )
+        ),
+
+        html.Div(className="output-container-3", style={"padding": "20px", "width": "90%", "height": "550px", "overflow": "hidden", "margin-top": "10px"}, children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
                 dcc.Graph(id="sb-chart-1"),
             ]),
-            html.Div(className="dash-graph", children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
                 dcc.Graph(id="sb-chart-2"),
             ]),
         ]),
 
-        html.Div(className="output-container-4", children=[
-            html.Div(className="dash-graph", children=[
+        html.Div(className="output-container-4", style={"padding": "20px", "width": "90%", "height": "550px", "overflow": "hidden", "margin-top": "10px"}, children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
                 dcc.Graph(id="pie-chart-1"),
             ]),
-            html.Div(className="dash-graph", children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
                 dcc.Graph(id="pie-chart-2"),
             ]),
-            html.Div(className="dash-graph", children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
                 dcc.Graph(id="pie-chart-3"),
             ]),
         ]),
-        html.Div(className="output-container-5", children=[
-            html.Div(className="dash-graph", children=[
+        html.Div(className="output-container-5", style={"padding": "20px", "width": "90%", "height": "550px", "overflow": "hidden", "margin-top": "10px"}, children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
                 dcc.Graph(id="bar-chart-2"),
             ]),
-            html.Div(className="dash-graph", children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"},  children=[
                 dcc.Graph(id="bar-chart-3"),
             ]),
-            html.Div(className="dash-graph", children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
                 dcc.Graph(id="bar-chart-4"),
+            ]),
+        ]),
+
+
+        html.Div(className="output-container-6", style={"padding": "20px", "width": "90%", "height": "550px", "overflow": "hidden", "margin-top": "10px"}, children=[
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
+                dcc.Graph(id="bar-chart-5"),
+            ]),
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"},  children=[
+                dcc.Graph(id="bar-chart-6"),
+            ]),
+            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
+                dcc.Graph(id="bar-chart-7"),
             ]),
         ]),
     ]
 )
 
+
+
+prediction_layout = html.Div([
+    html.H1("Welcome Prediction Section here we will predict the price of !!")
 ])
 
 
+# Callback to update the page content based on the URL
+@app.callback(Output('page-content', 'children'),
+              [Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/Prediction':
+        return prediction_layout
+    else:
+        return home_layout
 
-# # Callback to update the page content based on the URL
-# @app.callback(Output('page-content', 'children'),
-#               [Input('url', 'pathname')])
-# def display_page(pathname):
-#     if pathname == '/Prediction':
-#         return prediction_layout
-#     else:
-#         return home_layout
 
-# prediction_layout = html.Div(className="prediction", children=[
-#     html.H1("Predicting the UK Train Ticket Price"),
-#     html.Div(className="dropdown-full", children=[
-#         html.Div(className="departure-station", children=[
-#             html.H3("Select the Departure Station: "),
-#             dcc.Dropdown(
-#                 id="dept-dropdown",
-#                 options=[{'label': station, 'value': station} for station in data["Departure Station"].unique()],
-#                 value=data["Departure Station"].unique()[0]  # Set a default value
-#             ),
-#         ]),
-#         html.Div(className="arrival-station", children=[
-#             html.H3("Select the Arrival Station: "),
-#             dcc.Dropdown(id="arr-dropdown", options=[], value=None),
-#         ]),
-#         html.Div(className="ticket-class", children=[
-#             html.H3("Select the Ticket Class: "),
-#             dcc.Dropdown(
-#                 id="class-dropdown",
-#                 options=[{'label': 'Standard', 'value': 'Standard'},
-#                          {'label': 'First Class', 'value': 'First Class'}],
-#                 value="Standard"
-#             )
-#         ]),
-#         html.Div(className="purchase-type", children=[
-#             html.H3("Select the Purchase Type: "),
-#             dcc.Dropdown(
-#                 id="type-dropdown",
-#                 options=[{'label': 'Online', 'value': 'Online'},
-#                          {'label': 'Station', 'value': 'Station'}],
-#                 value="Online"
-#             )
-#         ]),
-#         html.Div(className="payment-method", children=[
-#             html.H3("Select the Payment Method: "),
-#             dcc.Dropdown(
-#                 id="payment-dropdown",
-#                 options=[{'label': 'Debit Card', 'value': 'Debit Card'},
-#                          {'label': 'Credit Card', 'value': 'Credit Card'},
-#                          {'label': 'Contactless', 'value': 'Contactless'}],
-#                 value="Debit Card"
-#             )
-#         ]),
-#         html.Div(className="hour", children=[
-#             html.H3("Select the Hour: "),
-#             dcc.Dropdown(
-#                 id="hour-dropdown",
-#                 options=[{'label': f'{i}.00 am', 'value': str(i)} if i < 12 else {'label': f'{i}.00 pm', 'value': str(i)} for i in range(24)],
-#                 value='0'  # Set a default value
-#             )
-#         ]),
-#         html.Div(className="weekday", children=[
-#             html.H3("Select the day: "),
-#             dcc.Dropdown(
-#                 id="week-dropdown",
-#                 options=[{'label': day, 'value': day} for day in weekday_order],
-#                 value="Monday"
-#             ),
-#         ]),
-#         html.Div(className="railcard", children=[
-#             html.H3("Select the RailCard: "),
-#             dcc.Dropdown(
-#                 id="railcard-dropdown",
-#                 options=[{'label': 'Adult', 'value': 'Adult'},
-#                          {'label': 'Disabled', 'value': 'Disabled'},
-#                          {'label': 'Senior', 'value': 'Senior'},
-#                          {'label': 'None', 'value': ''}],
-#                 value=""
-#             ),
-#         ]),
-#         html.Div(className="ticket-type", children=[
-#             html.H3("Select the Ticket Type: "),
-#             dcc.Dropdown(
-#                 id="ticket-type-dropdown",
-#                 options=[{'label': 'Anytime', 'value': 'Anytime'},
-#                          {'label': 'Advance', 'value': 'Advance'},
-#                          {'label': 'Off-Peak', 'value': 'Off-Peak'}],
-#                 value="Anytime"
-#             ),
-#         ]),
-#         html.Br(),
-#         html.Button('Predict', id='predict-button', n_clicks=0),
-#         html.Div(id='prediction-output')
-#     ])
-# ])
 
 # Callback to update arrival stations based on the selected departure station
 @app.callback(
@@ -266,19 +290,20 @@ def update_map_and_info(dep_location, arr_location, week_day):
     standard = data_filter[data_filter["Ticket Class"] == "Standard"]["Ticket Class"].count()
 
     info = [
-        html.H4("Trip Overview"),
-        html.P([html.B("Departure Destination: "), str(dep_location)]),
-        html.P([html.B("Arrival Destination: "), str(arr_location)]),
-        html.P([html.B("Number of Travels: "), str(no_of_travel)]),
-        html.P([html.B("Distance Covered: "), f"{distance} km"]),
-        html.P([html.B("Average Spend: "), f"£{average_spend}"]),
-        html.P([html.B("Refund Requests: "), str(refunded)]),
-        html.P([html.B("On Time Journeys: "), str(on_time)]),
-        html.P([html.B("Delayed Journeys: "), str(delayed)]),
-        html.P([html.B("Cancelled Journeys: "), str(cancelled)]),
-        html.P([html.B("First Class Tickets: "), str(first_class)]),
-        html.P([html.B("Standard Tickets: "), str(standard)])
-    ]
+    html.H4("Trip Overview", style={"font-size": "22px", "text-align": "center", "margin-bottom": "10px"}),
+    html.P([html.B("Departure Destination: "), str(dep_location)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("Arrival Destination: "), str(arr_location)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("Number of Travels: "), str(no_of_travel)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("Distance Covered: "), f"{distance} km"], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("Average Spend: "), f"£{average_spend}"], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("Refund Requests: "), str(refunded)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("On Time Journeys: "), str(on_time)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("Delayed Journeys: "), str(delayed)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("Cancelled Journeys: "), str(cancelled)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("First Class Tickets: "), str(first_class)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+    html.P([html.B("Standard Tickets: "), str(standard)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"})
+]
+
 
     text_info = f"The markers on the map identify stations by their latitude and longitude coordinates. The red marker denotes the departure station, while the green marker signifies the arrival destination. The line connecting these markers represents a potential route, with the distance estimated based on the approximate distance between two points on Earth's surface. For instance, the estimated distance between {dep_location} and {arr_location} is {distance} km."
 
@@ -310,8 +335,8 @@ def update_charts(dep_location, arr_location):
         title_y=0.90,
         title_font_size=18,
         font_size=14,
-        width=750,  # Set the width of the figure
-        height=600,  # Set the height of the figure
+        width=650,  # Set the width of the figure
+        height=500,  # Set the height of the figure
         paper_bgcolor = 'rgba(0,0,0,0)',
         plot_bgcolor = 'rgba(0,0,0,0)',
     )
@@ -332,13 +357,15 @@ def update_charts(dep_location, arr_location):
         title_y=0.90,
         title_font_size=18,
         font_size=14,
-        width=750,  # Set the width of the figure
-        height=600,  # Set the height of the figure
+        width=650,  # Set the width of the figure
+        height=500,  # Set the height of the figure
         paper_bgcolor = 'rgba(0,0,0,0)',
         plot_bgcolor = 'rgba(0,0,0,0)',
         
     )
     return fig1, fig2
+
+
 
 
 # Third Call back
@@ -355,7 +382,7 @@ def bar_graph(dep_location, weekday):
     else:
         data_filter = data[(data["Departure Station"] == dep_location) & (data["Day of week"] == weekday)]
     
-    bar_group = data_filter.groupby("Day of week")["Hour"].value_counts().reset_index()
+    bar_group = data_filter.groupby("Day of week")["Hour of Departure"].value_counts().reset_index()
     fig3 = px.bar(bar_group, x="Hour", y="count", title=f"<b>Active Hours in {dep_location} station</b>")
     fig3.update_xaxes(range=[0, 23],
                       tickmode='linear',  # Set tick mode to linear
@@ -364,14 +391,14 @@ def bar_graph(dep_location, weekday):
                       showticklabels=True)
     
     fig3.update_layout(
-        xaxis_title="Hours",
+        xaxis_title="Hour of Departure",
         yaxis_title= "Count of Travelers",
         title_x=0.55,
         title_y=0.98,
         title_font_size=18,
         font_size=14,
-        width=1500,
-        height=700,
+        width=1300,
+        height=600,
         paper_bgcolor = 'rgba(0,0,0,0)',
         plot_bgcolor = 'rgba(0,0,0,0)',
         margin=dict(
@@ -384,6 +411,7 @@ def bar_graph(dep_location, weekday):
     )
 
     return [fig3]
+
 
 # Fourth Call Back
 @app.callback(
@@ -416,8 +444,8 @@ def graphs(dep_location, arr_location,weekday):
 
 
     # Second Chart Create a SunBurst Chart
-    sb = data_filter.groupby(["Hour", "Journey Status"])["Journey Status"].value_counts().reset_index()
-    fig5 = px.sunburst(sb, path=["Hour", "Journey Status"], values="count", color="Journey Status", title="<b>Distribution Hours by Journey Status</b>")
+    sb = data_filter.groupby(["Hour of Departure", "Journey Status"])["Journey Status"].value_counts().reset_index()
+    fig5 = px.sunburst(sb, path=["Hour of Departure", "Journey Status"], values="count", color="Journey Status", title="<b>Distribution Hours by Journey Status</b>")
     fig5.update_layout(
         title_x=0.55,
         title_y=0.98,
@@ -582,14 +610,52 @@ def charts(dep_location, arr_location, weekday):
             x=0.55,
             y=0.5)
 
+    bar_4 = data_filter[data_filter["Journey Status"]=="Delayed"]["Hour of Purchase"].value_counts().reset_index()
+    fig11 = px.bar(bar_4, x="count", y="Hour of Purchase", orientation='h', title=f"<b>Recorded Delay Journey Hours for <br>{dep_location} to {arr_location}</b>")
+    fig11.update_layout(
+        title_x=0.15,
+        title_y=0.95,
+        title_font_size=16,
+        width=600,
+        height=600,
+        paper_bgcolor = 'rgba(0,0,0,0)',
+        plot_bgcolor = 'rgba(0,0,0,0)',
+    )
+
+    if bar_4.empty:
+        fig11.add_annotation(
+            text="No data available",
+            showarrow=False,
+            font=dict(size=16),
+            x=0.55,
+            y=0.5)
+        
+    
+    bar_5 = data_filter[data_filter["Journey Status"]=="Cancelled"]["Hour of Purchase"].value_counts().reset_index()
+    fig12 = px.bar(bar_5, x="count", y="Hour of Purchase", orientation='h', title=f"<b>Recorded Cancelled Journey Hours for <br>{dep_location} to {arr_location}</b>")
+    fig12.update_layout(
+        title_x=0.15,
+        title_y=0.95,
+        title_font_size=16,
+        width=600,
+        height=600,
+        paper_bgcolor = 'rgba(0,0,0,0)',
+        plot_bgcolor = 'rgba(0,0,0,0)',
+    )
+
+    if bar_5.empty:
+        fig10.add_annotation(
+            text="No data available",
+            showarrow=False,
+            font=dict(size=16),
+            x=0.55,
+            y=0.5)
+
 
     return fig5, fig7, fig6, fig8, fig9, fig10
 
-# Link your external stylesheet
-app.css.append_css({
-    'external_url': 'assets/styles.css'
-})
 
 
-if __name__ == '__main__':
-    app.run_server(debug=True)
+# Run the app 
+if __name__ == "__main__":
+    app.run(debug=True)
