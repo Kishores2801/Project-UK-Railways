@@ -23,21 +23,66 @@ app.config.suppress_callback_exceptions = True
 app.layout = html.Div(className='main-container', children=[
     dcc.Location(id='url', refresh=False),
     html.Nav(className='nav-bar', children=[
-        html.H1("UK Train Traveling Web Dashboard", style={"text-align": "center","font-size": "26px"}),
+        html.H1("UK Train Traveling Web Dashboard", style={"text-align": "center","font-size": "30px"}),
         html.Ul([
-            html.Li(dcc.Link('Home', href='/'), style={"font-size": "18px", "margin-bottom":"18px"}),
+            html.Li(dcc.Link('Overall', href='/'), style={"font-size": "18px", "margin-bottom":"18px"}),
+            html.Li(dcc.Link('Stations', href='/Station'), style={"font-size": "18px", "margin-bottom":"18px"}),
             html.Li(dcc.Link('Prediction', href='/Prediction'), style={"font-size": "18px", "margin-bottom":"18px"}),]),
             
         
     ], style={"background-color": "#990011","font-family": "Roboto, sans-serif", "color": "white",
-              "text-align": "center", "margin-bottom": "10px", "width": "97%", "height":"80%"}),
+              "text-align": "center", "margin-bottom": "10px", "width": "98%", "height":"80%"}),
     html.Div(id='page-content', style={'flex': '1'})
 
 ])
 
 
-home_layout = html.Div(
-    className="home",
+overall_layout = html.Div(
+    className="Overall",
+    children = [
+        html.P(
+            "This interactive web dashboard is designed to explore traveler behavior and operational performance in UK Railways.",
+            style={"font-family": "Roboto, sans-serif", "font-size": "20px", "margin-bottom": "20px", "margin-left": "20px"}
+        ),
+        html.Br(),
+
+        html.Div(
+            className="overall-output-container-1",
+            style={"padding": "20px", "width": "95%", "height": "600px", "overflow": "hidden", "margin-top": "20px"},
+            children=[
+                html.Div(
+                    className="overall-Map-section",
+                    style={"display": "flex", "justify-content": "space-between", "height": "500px", "overflow": "hidden"},
+                    children=[
+                        html.Div(
+                            className="overall-Map",
+                            id='overall-map-id',
+                            children=[],
+                            style={"height": "100%", "width": "65%", "margin": "0 10px 0 30px"}
+                        ),
+                        html.Div(
+                            className="overall-trip-info",
+                            id='overall-trip-id',
+                            children=[],
+                            style={"width": "40%", "padding": "5px", "display": "flex", "flex-direction": "column", "height": "100%", "line-height":"8px", "margin-left":"20px"}
+                        ),
+                    ]
+                ),
+                html.P(
+                    id="overall-text-id-1",
+                    className="text-class-1",
+                    children="",
+                    style={"font-size": "16px", "padding": "15px", "margin-left": "30px"}
+                ),
+            ]
+        ),
+
+    ]
+)
+
+
+station_layout = html.Div(
+    className="station",
     children=[
         html.P(
             "This interactive web dashboard is designed to explore traveler behavior and operational performance in UK Railways.",
@@ -115,7 +160,7 @@ home_layout = html.Div(
                             className="trip-info",
                             id='trip-id',
                             children=[],
-                            style={"width": "40%", "padding": "5px", "display": "flex", "flex-direction": "column", "height": "100%", "line-height":"8px"}
+                            style={"width": "40%", "padding": "5px", "display": "flex", "flex-direction": "column", "height": "100%", "line-height":"8px", "margin-left":"20px"}
                         ),
                     ]
                 ),
@@ -197,19 +242,7 @@ home_layout = html.Div(
                 dcc.Graph(id="bar-chart-4"),
             ]),
         ]),
-
-
-        html.Div(className="output-container-6", style={"padding": "20px", "width": "90%", "height": "550px", "overflow": "hidden", "margin-top": "10px"}, children=[
-            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
-                dcc.Graph(id="bar-chart-5"),
-            ]),
-            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"},  children=[
-                dcc.Graph(id="bar-chart-6"),
-            ]),
-            html.Div(className="dash-graph", style={"flex": 1, "text-align": "center", "height": "90%", "margin-right": "4%", "padding-left": "10px"}, children=[
-                dcc.Graph(id="bar-chart-7"),
-            ]),
-        ]),
+        
     ]
 )
 
@@ -226,8 +259,69 @@ prediction_layout = html.Div([
 def display_page(pathname):
     if pathname == '/Prediction':
         return prediction_layout
+    elif pathname =='/Station':
+        return station_layout
     else:
-        return home_layout
+        return overall_layout
+    
+
+@app.callback(
+    [Output("overall-map-id", "children"),
+     Output("overall-trip-id", "children"),
+     Output("overall-text-id-1", "children")],
+    [Input("dummy-input", "dummy-data")]
+)
+def update_chart(dummy_data):
+    # Assuming data is accessible within the function or defined globally
+    # Map Chart
+    coordinates = [51.5072, 0.1276]
+    site_map = folium.Map(location=coordinates, prefer_canvas=True, zoom_start=5, min_zoom=5, max_zoom=5)
+    
+    data_filter = data[["Departure Station", "Arrival Destination", "Departure Latitude", "Departure Longitude", "Arrival Latitude", "Arrival Longitude"]].drop_duplicates()
+
+    # Creating a loop to mark all the locations
+    for _, row in data_filter.iterrows():
+        departure_coords = [row["Departure Latitude"], row["Departure Longitude"]]
+        arrival_coords = [row["Arrival Latitude"], row["Arrival Longitude"]]
+        
+        folium.Marker(departure_coords, popup="Departure").add_to(site_map)
+        folium.Marker(arrival_coords, popup="Arrival").add_to(site_map)
+
+        folium.PolyLine(
+            locations=[departure_coords, arrival_coords],
+            weight=2
+        ).add_to(site_map)
+        
+    map_html = site_map._repr_html_()
+    map_html = html.Iframe(srcDoc=map_html, width='100%', height='550px')
+
+    # Trip Info
+    no_of_travel = len(data)
+    distance = data["Distance"].mean().astype(int)
+    average_spend = data["Price"].mean().round(2)
+    refunded = data[data["Refund Request"] == "Yes"]["Refund Request"].count()
+    on_time = data[data["Journey Status"] == "On Time"]["Journey Status"].count()
+    delayed = data[data["Journey Status"] == "Delayed"]["Journey Status"].count()
+    cancelled = data[data["Journey Status"] == "Cancelled"]["Journey Status"].count()
+    first_class = data[data["Ticket Class"] == "First Class"]["Ticket Class"].count()
+    standard = data[data["Ticket Class"] == "Standard"]["Ticket Class"].count()
+
+    info = [
+        html.H4("Overall Trip Overview", style={"font-size": "22px", "text-align": "center", "margin-bottom": "10px"}),
+        html.P([html.B("Number of Travels: "), str(no_of_travel)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+        html.P([html.B("Distance Covered: "), f"{distance} km"], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+        html.P([html.B("Average Spend: "), f"£{average_spend}"], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+        html.P([html.B("Refund Requests: "), str(refunded)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+        html.P([html.B("On Time Journeys: "), str(on_time)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+        html.P([html.B("Delayed Journeys: "), str(delayed)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+        html.P([html.B("Cancelled Journeys: "), str(cancelled)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+        html.P([html.B("First Class Tickets: "), str(first_class)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"}),
+        html.P([html.B("Standard Tickets: "), str(standard)], style={"font-size": "18px", "text-align": "left", "margin-bottom": "5px"})
+    ]
+
+    text_info = f"These lines represent all unique combinations of rail routes for Main Stations in UK Railways"
+
+    return map_html, info, text_info
 
 
 
@@ -325,7 +419,7 @@ def update_charts(dep_location, arr_location):
         return {}, {}, "No data available for the selected route."
 
     # Chart 1
-    grouped_data_price = data_filter.groupby('Date of Purchase')['Price'].sum().cumsum().reset_index()
+    grouped_data_price = data_filter.groupby('c')['Price'].sum().cumsum().reset_index()
     fig1 = px.line(grouped_data_price, x="Date of Purchase", y="Price", title=f"<b>Ticket Price Paid for <br>{dep_location} to {arr_location}</b>")
     fig1.update_yaxes(range=[0, max(grouped_data_price['Price']) * 1.2])
     fig1.update_layout(
@@ -335,8 +429,8 @@ def update_charts(dep_location, arr_location):
         title_y=0.90,
         title_font_size=18,
         font_size=14,
-        width=650,  # Set the width of the figure
-        height=500,  # Set the height of the figure
+        width=750,  # Set the width of the figure
+        height=600,  # Set the height of the figure
         paper_bgcolor = 'rgba(0,0,0,0)',
         plot_bgcolor = 'rgba(0,0,0,0)',
     )
@@ -357,8 +451,8 @@ def update_charts(dep_location, arr_location):
         title_y=0.90,
         title_font_size=18,
         font_size=14,
-        width=650,  # Set the width of the figure
-        height=500,  # Set the height of the figure
+        width=750,  # Set the width of the figure
+        height=600,  # Set the height of the figure
         paper_bgcolor = 'rgba(0,0,0,0)',
         plot_bgcolor = 'rgba(0,0,0,0)',
         
@@ -383,7 +477,7 @@ def bar_graph(dep_location, weekday):
         data_filter = data[(data["Departure Station"] == dep_location) & (data["Day of week"] == weekday)]
     
     bar_group = data_filter.groupby("Day of week")["Hour of Departure"].value_counts().reset_index()
-    fig3 = px.bar(bar_group, x="Hour", y="count", title=f"<b>Active Hours in {dep_location} station</b>")
+    fig3 = px.bar(bar_group, x="Hour of Departure", y="count", title=f"<b>Active Hours in {dep_location} station</b>")
     fig3.update_xaxes(range=[0, 23],
                       tickmode='linear',  # Set tick mode to linear
                       tick0=0,  # Start ticks from 0
@@ -397,7 +491,7 @@ def bar_graph(dep_location, weekday):
         title_y=0.98,
         title_font_size=18,
         font_size=14,
-        width=1300,
+        width=1750,
         height=600,
         paper_bgcolor = 'rgba(0,0,0,0)',
         plot_bgcolor = 'rgba(0,0,0,0)',
@@ -468,7 +562,8 @@ def graphs(dep_location, arr_location,weekday):
      Output("pie-chart-3", "figure"),
      Output("bar-chart-2", "figure"),
      Output("bar-chart-3", "figure"),
-     Output("bar-chart-4", "figure"),],
+     Output("bar-chart-4", "figure"),
+     ],
     [Input("dept-dropdown", "value"),
      Input("arr-dropdown", "value"),
      Input("week-dropdown", "value")]
@@ -610,48 +705,7 @@ def charts(dep_location, arr_location, weekday):
             x=0.55,
             y=0.5)
 
-    bar_4 = data_filter[data_filter["Journey Status"]=="Delayed"]["Hour of Purchase"].value_counts().reset_index()
-    fig11 = px.bar(bar_4, x="count", y="Hour of Purchase", orientation='h', title=f"<b>Recorded Delay Journey Hours for <br>{dep_location} to {arr_location}</b>")
-    fig11.update_layout(
-        title_x=0.15,
-        title_y=0.95,
-        title_font_size=16,
-        width=600,
-        height=600,
-        paper_bgcolor = 'rgba(0,0,0,0)',
-        plot_bgcolor = 'rgba(0,0,0,0)',
-    )
-
-    if bar_4.empty:
-        fig11.add_annotation(
-            text="No data available",
-            showarrow=False,
-            font=dict(size=16),
-            x=0.55,
-            y=0.5)
-        
-    
-    bar_5 = data_filter[data_filter["Journey Status"]=="Cancelled"]["Hour of Purchase"].value_counts().reset_index()
-    fig12 = px.bar(bar_5, x="count", y="Hour of Purchase", orientation='h', title=f"<b>Recorded Cancelled Journey Hours for <br>{dep_location} to {arr_location}</b>")
-    fig12.update_layout(
-        title_x=0.15,
-        title_y=0.95,
-        title_font_size=16,
-        width=600,
-        height=600,
-        paper_bgcolor = 'rgba(0,0,0,0)',
-        plot_bgcolor = 'rgba(0,0,0,0)',
-    )
-
-    if bar_5.empty:
-        fig10.add_annotation(
-            text="No data available",
-            showarrow=False,
-            font=dict(size=16),
-            x=0.55,
-            y=0.5)
-
-
+ 
     return fig5, fig7, fig6, fig8, fig9, fig10
 
 
