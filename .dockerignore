@@ -1,0 +1,12 @@
+Dockerfile
+README.md
+
+Analysis & Prediction/
+Dashboard APP/__pycache__
+Dashboard APP/static
+Data/
+OtherFiles/
+.vs/
+Dashapp/
+
+

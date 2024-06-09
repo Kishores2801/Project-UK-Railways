@@ -273,7 +273,7 @@ def display_page(pathname):
 )
 def update_chart(dummy_data):
     # Assuming data is accessible within the function or defined globally
-    # Map Chart
+    # ap ChartM
     coordinates = [51.5072, 0.1276]
     site_map = folium.Map(location=coordinates, prefer_canvas=True, zoom_start=5, min_zoom=5, max_zoom=5)
     

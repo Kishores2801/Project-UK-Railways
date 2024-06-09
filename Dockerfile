@@ -6,6 +6,5 @@ COPY . ./
 
 
 RUN pip install -r requirements.txt
-RUN pip install gunicorn
 EXPOSE 8080
 CMD python app.py
