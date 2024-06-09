@@ -7,7 +7,7 @@ from dash.dependencies import Input, Output
 import pandas as pd
 import plotly.express as px
 import folium
-
+import os
 # Create a Flask server
 server = Flask(__name__)
 
@@ -78,4 +78,5 @@ def set_arrival_options(dep_location):
 
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=False, host="0.0.0.0",port=8080)
+    port = int(os.environ.get("PORT", 8080))
+    app.run_server(debug=False, host="0.0.0.0",port=port)
