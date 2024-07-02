@@ -48,8 +48,21 @@ The dashboard includes various charts to visualize different aspects of train tr
 To use the dashboard, simply select the desired options from the dropdown menus and observe the visualizations and insights generated based on the selected criteria.
 
 ## Hosting
-The web dashboard is hosted on Render, a cloud platform that provides an easy and efficient way to deploy web applications.
+The web dashboard is hosted on Google Cloud Run.
+
+docker build -t gcr.io/uk-train-dashapp/dash-app .
+docker push gcr.io/uk-train-dashapp/dash-app
+
+gcloud iam service-accounts keys create key.json --iam-account uk-dashapp@uk-train-dashapp.iam.gserviceaccount.com
+
+gcloud projects add-iam-policy-binding uk-train-dashapp `
+    --member="serviceAccount:uk-dashapp@uk-train-dashapp.iam.gserviceaccount.com" `
+    --role="roles/artifactregistry.writer"
+
+
+gcloud run deploy dash-app --image gcr.io/uk-train-dashapp/dash-app --platform managed --region us-central1 --allow-unauthenticated
 
 
 
+Link: https://dash-app-7iiwvq76yq-uc.a.run.app/
 
